@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>html,body,#player{margin:0;height:100%;background:#000}</style>
+</head>
+<body>
+  <div id="player"></div>
+
+  <!-- โหลด IFrame Player API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    // ดึง videoId จากพารามิเตอร์ ?v=xxxx
+    function getParam(name){
+      const u = new URL(location.href);
+      return u.searchParams.get(name) || "dQw4w9WgXcQ";
+    }
+    const videoId = getParam('v');
+
+    let player;
+    window.onYouTubeIframeAPIReady = function(){
+      player = new YT.Player('player', {
+        videoId,
+        playerVars: {
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+          enablejsapi: 1         // สำคัญ: ให้ควบคุมด้วย JS ได้
+        },
+        events: {
+          onReady: () => {
+            // ตัวอย่าง: auto-play แบบปิดเสียง (ผ่าน policy ได้)
+            player.mute();
+            player.playVideo();
+          }
+        }
+      });
+    };
+
+    // ===== ช่องทางคุยกับ Kodular =====
+    // รับคำสั่งจากแอปผ่าน hash เช่น #cmd=play / #cmd=pause / #id=VIDEO_ID
+    function handleHash(){
+      const h = new URLSearchParams(location.hash.slice(1));
+      const cmd = h.get('cmd');
+      const id  = h.get('id');
+
+      if (id && player) player.loadVideoById(id);
+      if (!player) return;
+
+      if (cmd === 'play')  player.playVideo();
+      if (cmd === 'pause') player.pauseVideo();
+      if (cmd === 'seek')  player.seekTo(parseInt(h.get('sec')||0), true);
+    }
+    addEventListener('hashchange', handleHash);
+
+    // ส่งสถานะกลับไป Kodular (ถ้าต้องการ)
+    function sendToApp(s){
+      if (window.AppInventor) window.AppInventor.setWebViewString(s);
+    }
+    // ตัวอย่างการส่งเมื่อสถานะเปลี่ยน
+    setInterval(() => {
+      if (player) {
+        sendToApp(JSON.stringify({
+          t: Math.floor(player.getCurrentTime()||0),
+          s: player.getPlayerState()
+        }));
+      }
+    }, 1000);
+  </script>
+</body>
+</html>
